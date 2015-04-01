@@ -16,6 +16,11 @@ form = """
 """
 
 class MainPage(webapp2.RequestHandler):
+    def get(self):
+        self.response.headers['Content-Type'] = 'text/plain'
+        self.response.write("Hello, Udacity!")
+
+class ROT13(webapp2.RequestHandler):
     def rot(self, c, off = 13):
         res = c
         if c.islower():
@@ -37,12 +42,13 @@ class MainPage(webapp2.RequestHandler):
 
     def get(self):
         #self.response.headers['Content-Type'] = 'text/plain'
-        self.write_form();
+        self.write_form()
 
     def post(self):
         text = self.request.get('text')
-        self.write_form(cgi.escape(self.rot13(text), quote=True));
+        self.write_form(cgi.escape(self.rot13(text), quote=True))
 
 app = webapp2.WSGIApplication([
     ('/', MainPage),
+    ('/unit2/rot13', ROT13),
 ], debug=True)
