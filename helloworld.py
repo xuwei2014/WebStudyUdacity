@@ -2,6 +2,8 @@ import webapp2
 import cgi
 import re
 
+from blog import *
+
 class MainPage(webapp2.RequestHandler):
     def get(self):
         self.response.headers['Content-Type'] = 'text/plain'
@@ -138,10 +140,12 @@ class Welcome(webapp2.RequestHandler):
     def get(self):
         self.response.write("Welcome, %s!" % self.request.get('username'));
 
-
 app = webapp2.WSGIApplication([
     ('/', MainPage),
     ('/unit2/rot13', ROT13),
     ('/unit2/signup', SignUp),
     ('/unit2/welcome', Welcome),
+    ('/unit3/blog', FrontPage),
+    ('/unit3/blog/newpost', NewPost),
+    (r'/unit3/blog/(\d+)', BlogPage),
 ], debug=True)

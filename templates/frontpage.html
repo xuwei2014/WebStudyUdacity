@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content%}
+
+{% for i in items %}
+
+    <h1>{{ i.blogid }}</h1>
+    <h2>{{ i.subject }}</h2>
+    <div>{{ i.created }}</div>
+    <pre>{{ i.content }}</pre>
+
+{% endfor %}
+
+{% endblock %}
