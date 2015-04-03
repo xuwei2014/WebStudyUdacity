@@ -1,8 +1,10 @@
 import webapp2
 import cgi
 import re
+import hmac
 
 from blog import *
+from google.appengine.ext import db
 
 class MainPage(webapp2.RequestHandler):
     def get(self):
@@ -52,6 +54,20 @@ class ROT13(webapp2.RequestHandler):
         self.write_form(cgi.escape(self.rot13(text), quote=True))
 
 
+SECRET = "xuweiweb"
+
+def make_hash_name(name):
+    h = hmac.new(str(name), SECRET).hexdigest()
+    return "%s|%s" % (name, h)
+
+def check_name(name, h):
+    return make_hash_name(name) == h
+
+class User(db.Model):
+    name = db.StringProperty(required = True)
+    password = db.StringProperty(required = True)
+    email = db.StringProperty()
+
 class SignUp(webapp2.RequestHandler):
     form = """
     <form method="post">
@@ -92,6 +108,7 @@ class SignUp(webapp2.RequestHandler):
     PASS_RE = re.compile(r"^.{3,20}$")
     MAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
 
+
     def write_form(self, user="", passwd="", verify="", email="",
                          user_err="", pass_err="", verify_err="", email_err=""):
         self.response.write(self.form % {'user' : user,
@@ -127,25 +144,40 @@ class SignUp(webapp2.RequestHandler):
             if password != verify :
                 verify_err = "Your passwords didn't match."
 
-        if not self.MAIL_RE.match(email) :
+        if email and (not self.MAIL_RE.match(email)):
             email_err = "That's not a valid email."
 
+
+        results = db.GqlQuery('SELECT * FROM User WHERE name=:1', username)
+        item = results.get()
+        if item:
+            user_err = "The name have been used."
+
         if user_err == "" and pass_err == "" and verify_err == "" and email_err == "" :
-            self.redirect("/unit2/welcome?username=%s" % username)
+            u = User(name = username, password = password, email = email)
+            u.put()
+
+            self.response.headers.add_header('Set-Cookie', 'name=%s;Path=/' % str(make_hash_name(username)))
+            self.redirect("/blog/welcome")
         else :
             self.write_form(username, password, verify, email,
                         user_err, pass_err, verify_err, email_err)
 
 class Welcome(webapp2.RequestHandler):
     def get(self):
-        self.response.write("Welcome, %s!" % self.request.get('username'));
+        h = self.request.cookies.get('name')
+        name = h.split('|')[0]
+        if check_name(name, h):
+            self.response.write("Welcome, %s!" % name);
+        else:
+            self.redirect("/blog/signup")
 
 app = webapp2.WSGIApplication([
     ('/', MainPage),
     ('/unit2/rot13', ROT13),
-    ('/unit2/signup', SignUp),
-    ('/unit2/welcome', Welcome),
-    ('/unit3/blog', FrontPage),
-    ('/unit3/blog/newpost', NewPost),
-    (r'/unit3/blog/(\d+)', BlogPage),
+    ('/blog/signup', SignUp),
+    ('/blog/welcome', Welcome),
+    ('/blog', FrontPage),
+    ('/blog/newpost', NewPost),
+    (r'/blog/(\d+)', BlogPage),
 ], debug=True)
