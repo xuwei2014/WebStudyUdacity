@@ -9,10 +9,7 @@ template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
                                autoescape = True)
 
-bid = 0
-
 class Blog(db.Model):
-    blogid = db.IntegerProperty(required = True)
     subject = db.StringProperty(required = True)
     content = db.TextProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
@@ -43,14 +40,13 @@ class NewPost(Handler):
         self.render_newpost()
 
     def post(self):
-        global bid
         subject = self.request.get("subject")
         content = self.request.get("content")
 
         if subject and content:
-            bid += 1
-            b = Blog(blogid = bid,  subject = subject, content = content)
+            b = Blog(subject = subject, content = content)
             b.put()
+            bid = b.key().id()
 
             self.redirect("/unit3/blog/%s" % bid)
         else:
@@ -59,8 +55,10 @@ class NewPost(Handler):
 
 class BlogPage(Handler):
     def get(self, blog_id):
-        item = None
-        while not item:
-            items = db.GqlQuery("SELECT * FROM Blog where blogid = %s" % blog_id)
-            item = items.get()
-        self.render("blogpage.html", title = item.subject, date = item.created, content = item.content)
+        key = db.Key.from_path('Blog', int(blog_id))
+        item = db.get(key)
+        if not item:
+            self.error(404)
+            return
+        
+        self.render("blogpage.html", title = item.subject, date = item.created.strftime("%b %d, %Y"), content = item.content)
